@@ -1,12 +1,14 @@
-const request = require('supertest');
-const { mongoose } = require('mongoose');
-const { Article } = require('../../app/models/article.js');
-const { app, server } = require('../../app');
-const { faker } = require('@faker-js/faker');
+import request, { Response } from 'supertest';
+import mongoose from 'mongoose';
+import { describe, it, expect, test, beforeEach, beforeAll, afterEach, afterAll } from '@jest/globals';
+import { Article, IArticle } from '../../app/models/article';
+import { app, server } from '../../app';
+import { faker } from '@faker-js/faker';
 
 const article_info = {
    title: faker.lorem.words(),
-   body: faker.lorem.paragraphs()
+   body: faker.lorem.paragraphs(),
+   date: new Date()
 }
 
 beforeAll( async () => {
@@ -14,8 +16,8 @@ beforeAll( async () => {
 });
 
 afterAll( async () => {
-   server.close();
-   mongoose.connection.close();
+   await server.close();
+   await mongoose.connection.close();
 });
 
 describe('Empty database' , () => {
@@ -25,7 +27,7 @@ describe('Empty database' , () => {
 
    describe('GET /articles', () => {
       it('should return an empty array', async () => {
-         const response = await request(app).get('/articles');
+         const response : Response = await request(app).get('/articles');
 
          expect(response.status).toBe(200);
          expect(response.body).toHaveLength(0);
@@ -34,7 +36,7 @@ describe('Empty database' , () => {
 
    describe('GET /article/:id', () => {
       it('should return that no article found with id 111111111111111111111111', async () => {
-         const response = await request(app).get('/article/111111111111111111111111');
+         const response : Response = await request(app).get('/article/111111111111111111111111');
 
          expect(response.status).toBe(404);
          expect(response.body.message).toBe('No article found with id 111111111111111111111111');
@@ -43,17 +45,16 @@ describe('Empty database' , () => {
 
    describe('POST /article', () => {
       it('should create an article', async () => {
-         const response = await request(app).post('/article').send(article_info);
+         const response : Response = await request(app).post('/article').send(article_info);
 
          expect(response.status).toBe(201);
          expect(response.body.message).toBe('Article created successfully!');
       });
 
       it('should not create an article without title', async () => {
-         const article_info_copy = { ...article_info };
-         delete article_info_copy.title;
+         const { title, ...article_info_copy } = article_info;
 
-         const response = await request(app).post('/article').send(article_info_copy);
+         const response : Response = await request(app).post('/article').send(article_info_copy);
 
          expect(response.status).toBe(422);
          expect(response.body.message).toBe('Article validation failed');
@@ -61,10 +62,9 @@ describe('Empty database' , () => {
       });
 
       it('should not create an article without body', async () => {
-         const article_info_copy = { ...article_info };
-         delete article_info_copy.body;
+         const { body, ...article_info_copy } = article_info;
 
-         const response = await request(app).post('/article').send(article_info_copy);
+         const response : Response = await request(app).post('/article').send(article_info_copy);
 
          expect(response.status).toBe(422);
          expect(response.body.message).toBe('Article validation failed');
@@ -72,11 +72,9 @@ describe('Empty database' , () => {
       });
 
       it('should not create an article without title and body', async () => {
-         const article_info_copy = { ...article_info };
-         delete article_info_copy.title;
-         delete article_info_copy.body;
+         const { title, body, ...article_info_copy } = article_info;
 
-         const response = await request(app).post('/article').send(article_info_copy);
+         const response : Response = await request(app).post('/article').send(article_info_copy);
 
          expect(response.status).toBe(422);
          expect(response.body.message).toBe('Article validation failed');
@@ -89,7 +87,7 @@ describe('Empty database' , () => {
 
    describe('PUT /article/:id', () => {
       it('should return that no article found with id 111111111111111111111111', async () => {
-         const response = await request(app).put('/article/111111111111111111111111').send(article_info);
+         const response : Response = await request(app).put('/article/111111111111111111111111').send(article_info);
 
          expect(response.status).toBe(404);
          expect(response.body.message).toBe('No article found with id 111111111111111111111111');
@@ -98,7 +96,7 @@ describe('Empty database' , () => {
 
    describe('DELETE /article/:id', () => {
       it('should return that no article found with id 111111111111111111111111', async () => {
-         const response = await request(app).delete('/article/111111111111111111111111');
+         const response : Response = await request(app).delete('/article/111111111111111111111111');
 
          expect(response.status).toBe(404);
          expect(response.body.message).toBe('No article found with id 111111111111111111111111');
@@ -107,7 +105,7 @@ describe('Empty database' , () => {
 });
 
 describe('Database with some information' , () => {
-   let articles;
+   let articles : Array<IArticle>;
 
    beforeEach( async () => {
       for (let i = 1; i <= 5; i++) {
@@ -126,7 +124,7 @@ describe('Database with some information' , () => {
 
    describe('GET /articles', () => {
       it('should return an array with a length of 5', async () => {
-         const response = await request(app).get('/articles');
+         const response : Response = await request(app).get('/articles');
 
          expect(response.status).toBe(200);
          expect(response.body).toHaveLength(5);
@@ -135,14 +133,13 @@ describe('Database with some information' , () => {
 
    describe('GET /article/:id', () => {
       it('should return an article', async () => {
-         const response = await request(app).get(`/article/${articles[0]._id}`);
+         const response : Response = await request(app).get(`/article/${articles[0]._id}`);
 
          expect(response.status).toBe(200);
-         expect(response.body).toMatchObject({
-            _id: articles[0]._id.toString(),
-            title: articles[0].title.toString(),
-            body: articles[0].body.toString()
-         });
+
+         expect(response.body._id).toBe(String(articles[0]._id));
+         expect(response.body.title).toBe(articles[0].title);
+         expect(response.body.body).toBe(articles[0].body);
       });
    });
 
@@ -150,10 +147,11 @@ describe('Database with some information' , () => {
       it('should update an article', async () => {
          const article = {
             title: faker.lorem.words(),
-            body: faker.lorem.paragraphs()
+            body: faker.lorem.paragraphs(),
+            date: new Date()
          }
 
-         const response = await request(app).put(`/article/${articles[0]._id}`).send(article);
+         const response : Response = await request(app).put(`/article/${articles[0]._id}`).send(article);
 
          expect(response.status).toBe(200);
          expect(response.body.message).toBe('Article updated successfully!');
@@ -165,7 +163,7 @@ describe('Database with some information' , () => {
             body: faker.lorem.paragraphs()
          }
 
-         const response = await request(app).put(`/article/${articles[0]._id}`).send(article);
+         const response : Response = await request(app).put(`/article/${articles[0]._id}`).send(article);
 
          expect(response.status).toBe(200);
          expect(response.body.message).toBe('Article updated successfully!');
@@ -177,7 +175,7 @@ describe('Database with some information' , () => {
             body: faker.lorem.paragraphs()
          }
 
-         const response = await request(app).put(`/article/${articles[0]._id}`).send(article);
+         const response : Response = await request(app).put(`/article/${articles[0]._id}`).send(article);
 
          expect(response.status).toBe(200);
          expect(response.body.message).toBe('Article updated successfully!');
@@ -189,18 +187,17 @@ describe('Database with some information' , () => {
             // body: faker.lorem.paragraphs()
          }
 
-         const response = await request(app).put(`/article/${articles[0]._id}`).send(article);
+         const response : Response = await request(app).put(`/article/${articles[0]._id}`).send(article);
 
          expect(response.status).toBe(200);
          expect(response.body.message).toBe('Article updated successfully!');
       });
-
       // Não consegui pensar em uma forma de causar o erro 500.
    });
 
    describe('DELETE /article/:id', () => {
       it('should delete an article', async () => {
-         const response = await request(app).delete(`/article/${articles[0]._id}`);
+         const response : Response = await request(app).delete(`/article/${articles[0]._id}`);
 
          expect(response.status).toBe(200);
       });
@@ -212,7 +209,7 @@ describe('Database with some information' , () => {
 describe('Middleware', () => {
    describe('GET /article/:id', () => {
       it('should return invalid ObjectId', async () => {
-         const response = await request(app).get('/article/InvalidObjectId');
+         const response : Response = await request(app).get('/article/InvalidObjectId');
 
          expect(response.status).toBe(400);
          expect(response.body.message).toBe('Invalid ObjectId');
@@ -221,7 +218,7 @@ describe('Middleware', () => {
 
    describe('PUT /article/:id', () => {
       it('should return invalid ObjectId', async () => {
-         const response = await request(app).put('/article/InvalidObjectId').send(article_info);
+         const response : Response = await request(app).put('/article/InvalidObjectId').send(article_info);
 
          expect(response.status).toBe(400);
          expect(response.body.message).toBe('Invalid ObjectId');
@@ -230,7 +227,7 @@ describe('Middleware', () => {
 
    describe('DELETE /article/:id', () => {
       it('should return invalid ObjectId', async () => {
-         const response = await request(app).delete('/article/InvalidObjectId');
+         const response : Response = await request(app).delete('/article/InvalidObjectId');
 
          expect(response.status).toBe(400);
          expect(response.body.message).toBe('Invalid ObjectId');
